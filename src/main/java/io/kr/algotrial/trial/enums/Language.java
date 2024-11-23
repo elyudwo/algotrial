@@ -1,4 +1,6 @@
-package io.kr.algotrial.trial;
+package io.kr.algotrial.trial.enums;
 
-public class LanguageEnum {
+public enum Language {
+
+    CPP, JAVA;
 }
