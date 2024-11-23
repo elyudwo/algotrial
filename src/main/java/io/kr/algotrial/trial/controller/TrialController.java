@@ -16,9 +16,9 @@ public class TrialController {
 
     private final TrialService trialService;
 
-    @PostMapping("/cpp")
-    public ResponseEntity<String> cppTrial(@RequestBody CodeReqDto codeReqDto) {
-        return ResponseEntity.ok(trialService.trialCpp(codeReqDto));
+    @PostMapping
+    public ResponseEntity<String> trial(@RequestBody CodeReqDto codeReqDto) {
+        return ResponseEntity.ok(trialService.trialProblem(codeReqDto));
     }
 
 }

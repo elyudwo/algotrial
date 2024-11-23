@@ -1,6 +1,8 @@
 package io.kr.algotrial.trial.service;
 
 import io.kr.algotrial.trial.dto.CodeReqDto;
+import io.kr.algotrial.trial.enums.Language;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +14,21 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class TrialService {
 
-    public String trialCpp(CodeReqDto codeReqDto) {
+    private final CppTrialService cppTrialService;
+    private final JavaTrialService javaTrialService;
+
+    public String trialProblem(CodeReqDto codeReqDto) {
+        if (codeReqDto.getLanguage() == Language.CPP) {
+            return trialCpp(codeReqDto);
+        }
+        return trialJava(codeReqDto);
+    }
+
+    private String trialCpp(CodeReqDto codeReqDto) {
         try {
             log.info("code Data : {}", codeReqDto.getCodeData());
             // 1. 임시 디렉터리 생성
@@ -27,11 +40,39 @@ public class TrialService {
             Files.write(cppFilePath, codeReqDto.getCodeData().getBytes());
 
             // 3. C++ 코드 컴파일 및 유효성 검사
-            Process compileProcess = getCompileProcess(cppFilePath, binaryFilePath);
+            Process compileProcess = cppTrialService.getCompileProcess(cppFilePath, binaryFilePath);
             validateAndReturnOutput(compileProcess);
 
             // 4. 컴파일된 실행 파일 실행
-            Process runProcess = runCompiledProcess(binaryFilePath);
+            Process runProcess = cppTrialService.runCompiledProcess(binaryFilePath);
+
+            // 5. 실행 결과 유효성 검사 및 결과 반환
+            return validateAndReturnOutput(runProcess);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "An error occurred: " + e.getMessage();
+        }
+    }
+
+    private String trialJava(CodeReqDto codeReqDto) {
+        try {
+            log.info("Code Data : {}", codeReqDto.getCodeData());
+
+            // 1. 임시 디렉터리 생성
+            Path dir = getDirectoryPath();
+            Path javaFilePath = dir.resolve("Trial.java");
+            Path classFilePath = dir.resolve("Trial.class");
+
+            // 2. Java 코드 파일 생성
+            Files.write(javaFilePath, codeReqDto.getCodeData().getBytes());
+
+            // 3. Java 코드 컴파일 및 유효성 검사
+            Process compileProcess = javaTrialService.getJavaCompileProcess(javaFilePath);
+            validateAndReturnOutput(compileProcess);
+
+            // 4. 컴파일된 .class 파일 실행
+            Process runProcess = javaTrialService.runJavaProcess(dir, "Trial");
 
             // 5. 실행 결과 유효성 검사 및 결과 반환
             return validateAndReturnOutput(runProcess);
@@ -51,20 +92,6 @@ public class TrialService {
             log.info("Directory created: {}", dir);
         }
         return dir;
-    }
-
-    private Process runCompiledProcess(Path binaryFilePath) throws IOException {
-        ProcessBuilder runBuilder = new ProcessBuilder(binaryFilePath.toString());
-        runBuilder.redirectErrorStream(true);
-        return runBuilder.start();
-    }
-
-    private Process getCompileProcess(Path cppFilePath, Path binaryFilePath) throws IOException {
-        ProcessBuilder compileBuilder = new ProcessBuilder(
-                "g++", cppFilePath.toString(), "-o", binaryFilePath.toString()
-        );
-        compileBuilder.redirectErrorStream(true);
-        return compileBuilder.start();
     }
 
     private String validateAndReturnOutput(Process compileProcess) {
