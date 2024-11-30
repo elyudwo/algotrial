@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class TrialService {
 
     private final CppTrialService cppTrialService;
     private final JavaTrialService javaTrialService;
+    private final InputOutputService inputOutputService;
 
     public String trialProblem(CodeReqDto codeReqDto) {
         if (codeReqDto.getLanguage() == Language.CPP) {
@@ -29,6 +31,13 @@ public class TrialService {
     }
 
     private String trialCpp(CodeReqDto codeReqDto) {
+        // TODO: S3에서 Text 파일 조회
+        String input = inputOutputService.getInputText(codeReqDto.getProblemId());
+        String output = inputOutputService.getOutputText(codeReqDto.getProblemId());
+
+        log.info("input : {}", input);
+        log.info("output : {}", output);
+
         try {
             log.info("code Data : {}", codeReqDto.getCodeData());
             // 1. 임시 디렉터리 생성
@@ -41,13 +50,13 @@ public class TrialService {
 
             // 3. C++ 코드 컴파일 및 유효성 검사
             Process compileProcess = cppTrialService.getCompileProcess(cppFilePath, binaryFilePath);
-            validateAndReturnOutput(compileProcess);
+            validateAndReturnOutput(compileProcess, output);
 
             // 4. 컴파일된 실행 파일 실행
-            Process runProcess = cppTrialService.runCompiledProcess(binaryFilePath);
+            Process runProcess = cppTrialService.runCompiledProcess(binaryFilePath, input);
 
             // 5. 실행 결과 유효성 검사 및 결과 반환
-            return validateAndReturnOutput(runProcess);
+            return validateAndReturnOutput(runProcess, output);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -56,6 +65,8 @@ public class TrialService {
     }
 
     private String trialJava(CodeReqDto codeReqDto) {
+        String input = inputOutputService.getInputText(codeReqDto.getProblemId());
+        String output = inputOutputService.getOutputText(codeReqDto.getProblemId());
         try {
             log.info("Code Data : {}", codeReqDto.getCodeData());
 
@@ -69,13 +80,13 @@ public class TrialService {
 
             // 3. Java 코드 컴파일 및 유효성 검사
             Process compileProcess = javaTrialService.getJavaCompileProcess(javaFilePath);
-            validateAndReturnOutput(compileProcess);
+            validateAndReturnOutput(compileProcess, output);
 
             // 4. 컴파일된 .class 파일 실행
             Process runProcess = javaTrialService.runJavaProcess(dir, "Trial");
 
             // 5. 실행 결과 유효성 검사 및 결과 반환
-            return validateAndReturnOutput(runProcess);
+            return validateAndReturnOutput(runProcess, output);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -94,12 +105,12 @@ public class TrialService {
         return dir;
     }
 
-    private String validateAndReturnOutput(Process compileProcess) {
+    private String validateAndReturnOutput(Process process, String output) {
         try {
-            String compileOutput = readProcessOutput(compileProcess);
+            String compileOutput = readProcessOutput(process, output);
 
             // 정상적으로 종료되면 0을 반환, 아닐 경우 0이 아닌 값 반환
-            if (compileProcess.waitFor() != 0) {
+            if (process.waitFor() != 0) {
                 throw new RuntimeException("Compilation Error:\n" + compileOutput);
             }
             return compileOutput;
@@ -108,14 +119,20 @@ public class TrialService {
         }
     }
 
-    private String readProcessOutput(Process process) throws IOException {
+    private String readProcessOutput(Process process, String output) throws IOException {
+        StringBuilder result = new StringBuilder();
+
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            StringBuilder output = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                result.append(line).append("\n");
             }
-            return output.toString();
         }
+
+        String finalOutput = result.toString().trim();
+        log.info("output Log: '{}'", finalOutput);
+        log.info("S3 output: '{}'", output);
+
+        return finalOutput;
     }
 }
