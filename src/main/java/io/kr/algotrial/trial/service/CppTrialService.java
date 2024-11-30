@@ -12,19 +12,19 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class CppTrialService {
 
-    public Process runCompiledProcess(Path binaryFilePath, String input) {
+    public Process runCompiledProcess(Path binaryFilePath, String input, double timeComplexity) {
         try {
             ProcessBuilder runBuilder = new ProcessBuilder(binaryFilePath.toString());
             runBuilder.redirectErrorStream(true);
             Process process = runBuilder.start();
 
             try (OutputStream outputStream = process.getOutputStream()) {
-                log.info("Input data being sent to the process: '{}'", input);
+                log.info("Input data being sent to the process: '{}' by CPP", input);
                 outputStream.write(input.getBytes());
                 outputStream.flush();
             }
 
-            validateTimeComplexity(process);
+            validateTimeComplexity(process, timeComplexity);
 
             return process;
         } catch (IOException e) {
@@ -34,8 +34,9 @@ public class CppTrialService {
         }
     }
 
-    private void validateTimeComplexity(Process process) throws InterruptedException {
-        boolean checkTimeout = process.waitFor(1, TimeUnit.SECONDS);
+    private void validateTimeComplexity(Process process, double timeComplexity) throws InterruptedException {
+        long timeoutInMillis = (long) (timeComplexity * 1000);
+        boolean checkTimeout = process.waitFor(timeoutInMillis, TimeUnit.MILLISECONDS);
 
         if(!checkTimeout) {
             process.destroy();

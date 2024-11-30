@@ -12,7 +12,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +40,7 @@ public class TrialService {
         try {
             log.info("code Data : {}", codeReqDto.getCodeData());
             // 1. 임시 디렉터리 생성
-            Path dir = getDirectoryPath();
+            Path dir = getDirectoryPath("cpp");
             Path cppFilePath = dir.resolve("trial.cpp");
             Path binaryFilePath = dir.resolve("trial");
 
@@ -53,7 +52,7 @@ public class TrialService {
             validateAndReturnOutput(compileProcess, output);
 
             // 4. 컴파일된 실행 파일 실행
-            Process runProcess = cppTrialService.runCompiledProcess(binaryFilePath, input);
+            Process runProcess = cppTrialService.runCompiledProcess(binaryFilePath, input, codeReqDto.getTimeComplexity());
 
             // 5. 실행 결과 유효성 검사 및 결과 반환
             return validateAndReturnOutput(runProcess, output);
@@ -71,9 +70,8 @@ public class TrialService {
             log.info("Code Data : {}", codeReqDto.getCodeData());
 
             // 1. 임시 디렉터리 생성
-            Path dir = getDirectoryPath();
-            Path javaFilePath = dir.resolve("Trial.java");
-            Path classFilePath = dir.resolve("Trial.class");
+            Path dir = getDirectoryPath("java");
+            Path javaFilePath = dir.resolve("Main.java");
 
             // 2. Java 코드 파일 생성
             Files.write(javaFilePath, codeReqDto.getCodeData().getBytes());
@@ -83,7 +81,7 @@ public class TrialService {
             validateAndReturnOutput(compileProcess, output);
 
             // 4. 컴파일된 .class 파일 실행
-            Process runProcess = javaTrialService.runJavaProcess(dir, "Trial");
+            Process runProcess = javaTrialService.runJavaProcess(dir, "Main", input, codeReqDto.getTimeComplexity());
 
             // 5. 실행 결과 유효성 검사 및 결과 반환
             return validateAndReturnOutput(runProcess, output);
@@ -94,8 +92,8 @@ public class TrialService {
         }
     }
 
-    private Path getDirectoryPath() throws IOException {
-        Path dir = Paths.get("cpp-trial");
+    private Path getDirectoryPath(String path) throws IOException {
+        Path dir = Paths.get(path);
         if (Files.exists(dir)) {
             log.info("Directory already exists: {}", dir);
         } else {
