@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  cpp-env:
+    image: algotrial-cpp # 위에서 만든 Docker 이미지 이름
+    build:
+      context: . # 현재 디렉토리에서 Dockerfile 빌드
+    ports:
+      - "8080:8080" # 호스트:컨테이너
+
+    volumes:
+      - .:/app # 현재 디렉토리를 컨테이너의 /app에 마운트
+    stdin_open: true # bash 실행을 위한 stdin 설정
+    tty: true # 터미널 지원
